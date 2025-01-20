@@ -88,6 +88,7 @@ pub struct ServiceCharacteristics {
     #[serde(rename(deserialize = "serviceName"))]
     pub service_name: String,
     pub description: String,
+    #[serde(default = "default_value")]
     pub value: Value,
     pub format: String,
     pub perms: Vec<String>,
@@ -96,6 +97,10 @@ pub struct ServiceCharacteristics {
     #[serde(rename(deserialize = "canWrite"))]
     pub can_write: bool,
     pub ev: bool,
+}
+
+fn default_value() -> Value {
+    return json!(null)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
