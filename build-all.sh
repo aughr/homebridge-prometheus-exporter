@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
-rm -rf target
-rm *.tgz
-docker run --rm -v $(pwd):/app rust-compile-aarc64
-docker run --rm -v $(pwd):/app rust-compile-armv7
-cargo build --release
+set -e
 
-tar cvfz homebridge-exporter-aarc64.tgz target/aarch64-unknown-linux-gnu/release/homebridge-exporter
-tar cvfz homebridge-exporter-armv7.tgz target/armv7-unknown-linux-gnueabihf/release/homebridge-exporter
-tar cvfz homebridge-exporter-darwin-arm64.tgz target/release/homebridge-exporter
+rm -rf bin || true
+rm *.tgz || true
+
+mkdir -p bin
+
+# Build for Linux ARM64
+GOOS=linux GOARCH=arm64 go build -o bin/homebridge-exporter-linux-arm64 .
+
+# Build for Linux ARM (32-bit)
+GOOS=linux GOARCH=arm go build -o bin/homebridge-exporter-linux-arm .
+
+# Build for current platform (likely macOS ARM64)
+go build -o bin/homebridge-exporter .
+
+# Create tarballs
+tar cvfz homebridge-exporter-linux-arm64.tgz bin/homebridge-exporter-linux-arm64
+tar cvfz homebridge-exporter-linux-arm.tgz bin/homebridge-exporter-linux-arm
+tar cvfz homebridge-exporter-darwin-arm64.tgz bin/homebridge-exporter

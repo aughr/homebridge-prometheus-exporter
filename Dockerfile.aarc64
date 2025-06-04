@@ -1,12 +1,7 @@
-FROM rust:latest
- 
-RUN apt update && apt upgrade -y
-RUN apt install -y --no-install-recommends g++-arm-linux-gnueabihf libc6-dev-armhf-cross libssl-dev pkg-config
- 
-RUN rustup target add aarch64-unknown-linux-gnu
-RUN rustup toolchain install stable-aarch64-unknown-linux-gnu
- 
-WORKDIR /app 
- 
-RUN export OPENSSL_DIR=`openssl version -d`
-CMD ["cargo", "build", "--target", "aarch64-unknown-linux-gnu", "--release"]
+FROM golang:1.21-alpine
+
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+CMD ["go", "build", "-o", "homebridge-exporter-linux-arm64", "."]
