@@ -86,7 +86,7 @@ func parseFlags() *Config {
 }
 
 func startMetricsServer(ctx context.Context, wg *sync.WaitGroup, config *Config) *http.Server {
-	session := NewSession(config.Username, config.Password, config.URI)
+	session := NewSession(config.Username, config.Password, config.URI, config.Debug)
 	keys := loadKeys(config.KeyFile)
 
 	appState := &AppState{
@@ -131,7 +131,7 @@ func metricsHandler(state *AppState) http.Handler {
 			return
 		}
 
-		registry, err := buildRegistry(token, state.config.URI, state.config.Prefix)
+		registry, err := buildRegistry(token, state.config.URI, state.config.Prefix, state.config.Debug)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

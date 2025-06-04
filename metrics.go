@@ -9,10 +9,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func buildRegistry(token, uri, prefix string) (*prometheus.Registry, error) {
+func buildRegistry(token, uri, prefix string, debug bool) (*prometheus.Registry, error) {
 	registry := prometheus.NewRegistry()
 
-	accessories, err := getAllAccessories(token, uri)
+	accessories, err := getAllAccessories(token, uri, debug)
 	if err != nil {
 		log.Printf("Error fetching accessories: %v", err)
 		return nil, err
@@ -26,7 +26,9 @@ func buildRegistry(token, uri, prefix string) (*prometheus.Registry, error) {
 
 			value, err := convertToFloat64(service.Value)
 			if err != nil {
-				log.Printf("Skipping service %s: %v", service.ServiceName, err)
+				if debug {
+					log.Printf("Skipping service %s: %v", service.ServiceName, err)
+				}
 				continue
 			}
 

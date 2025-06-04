@@ -25,13 +25,15 @@ type Session struct {
 	uri       string
 	expiresIn int64
 	createdAt time.Time
+	debug     bool
 }
 
-func NewSession(username, password, uri string) *Session {
+func NewSession(username, password, uri string, debug bool) *Session {
 	return &Session{
 		username: username,
 		password: password,
 		uri:      uri,
+		debug:    debug,
 	}
 }
 
@@ -63,7 +65,7 @@ func (s *Session) GetToken() (string, error) {
 
 	if !s.isValid() {
 		log.Println("Token is invalid, fetching a new token")
-		token, err := login(s.username, s.password, s.uri)
+		token, err := login(s.username, s.password, s.uri, s.debug)
 		if err != nil {
 			s.token = ""
 			return "", err
@@ -114,7 +116,7 @@ type Accessory struct {
 	UniqueID               string                   `json:"uniqueId"`
 }
 
-func login(username, password, uri string) (*Token, error) {
+func login(username, password, uri string, debug bool) (*Token, error) {
 	loginData := map[string]string{
 		"username": username,
 		"password": password,
@@ -151,11 +153,13 @@ func login(username, password, uri string) (*Token, error) {
 		return nil, fmt.Errorf("failed to unmarshal token: %v", err)
 	}
 
-	log.Printf("Fetched token %s. New token is valid for %d seconds", token.AccessToken, token.ExpiresIn)
+	if debug {
+		log.Printf("Fetched token %s. New token is valid for %d seconds", token.AccessToken, token.ExpiresIn)
+	}
 	return &token, nil
 }
 
-func getAllAccessories(token, uri string) ([]Accessory, error) {
+func getAllAccessories(token, uri string, debug bool) ([]Accessory, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/accessories", uri), nil)
 	if err != nil {
@@ -165,7 +169,9 @@ func getAllAccessories(token, uri string) ([]Accessory, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	log.Printf("Fetching accessories using token %s", token)
+	if debug {
+		log.Printf("Fetching accessories using token %s", token)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make accessories request: %v", err)
@@ -181,7 +187,9 @@ func getAllAccessories(token, uri string) ([]Accessory, error) {
 		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	log.Printf("Accessories JSON: %s", string(body))
+	if debug {
+		log.Printf("Accessories JSON: %s", string(body))
+	}
 
 	var accessories []Accessory
 	if err := json.Unmarshal(body, &accessories); err != nil {
