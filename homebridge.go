@@ -39,8 +39,22 @@ func (s *Session) isValid() bool {
 	if s.token == "" {
 		return false
 	}
-	elapsed := time.Since(s.createdAt).Seconds()
-	return elapsed < float64(s.expiresIn)
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/auth/check", s.uri), nil)
+	if err != nil {
+		return false
+	}
+	
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.token))
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	
+	return resp.StatusCode == http.StatusOK
 }
 
 func (s *Session) GetToken() (string, error) {
