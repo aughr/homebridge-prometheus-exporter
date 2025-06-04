@@ -39,21 +39,21 @@ func (s *Session) isValid() bool {
 	if s.token == "" {
 		return false
 	}
-	
+
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/auth/check", s.uri), nil)
 	if err != nil {
 		return false
 	}
-	
+
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.token))
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
-	
+
 	return resp.StatusCode == http.StatusOK
 }
 
@@ -190,33 +190,4 @@ func getAllAccessories(token, uri string) ([]Accessory, error) {
 
 	log.Printf("Fetched %d accessories", len(accessories))
 	return accessories, nil
-}
-
-func restart(token, uri string) (bool, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/server/restart", uri), bytes.NewBuffer([]byte("{}")))
-	if err != nil {
-		return false, fmt.Errorf("failed to create restart request: %v", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-	log.Printf("Warning: restarting homebridge server using token %s", token)
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, fmt.Errorf("failed to make restart request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return true, nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, fmt.Errorf("restart failed with status %d", resp.StatusCode)
-	}
-
-	return false, fmt.Errorf("restart failed: %s", string(body))
 }

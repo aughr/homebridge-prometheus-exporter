@@ -98,7 +98,6 @@ func startMetricsServer(ctx context.Context, wg *sync.WaitGroup, config *Config)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ping", pingHandler(appState))
 	mux.Handle("/metrics", metricsHandler(appState))
-	mux.HandleFunc("/restart", restartHandler(appState))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.Port),
@@ -141,46 +140,4 @@ func metricsHandler(state *AppState) http.Handler {
 		handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 		handler.ServeHTTP(w, r)
 	})
-}
-
-func restartHandler(state *AppState) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		if !checkBearerToken(r, state.keys.Keys) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"error":"Unauthorized request, please provide a valid token."}`))
-			return
-		}
-
-		token, err := state.session.GetToken()
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
-			return
-		}
-
-		success, err := restart(token, state.config.URI)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
-			return
-		}
-
-		if success {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"result":"done"}`))
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":"Restart failed"}`))
-		}
-	}
 }

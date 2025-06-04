@@ -30,7 +30,7 @@ func buildRegistry(token, uri, prefix string) (*prometheus.Registry, error) {
 				continue
 			}
 
-			metricName := fmt.Sprintf("%s_%s_%s", 
+			metricName := fmt.Sprintf("%s_%s_%s",
 				prefix,
 				toSnakeCase(service.ServiceType),
 				toSnakeCase(service.Type),
@@ -91,7 +91,7 @@ func convertToFloat64(value interface{}) (float64, error) {
 
 func toSnakeCase(s string) string {
 	var result strings.Builder
-	
+
 	for i, r := range s {
 		if i > 0 && (r >= 'A' && r <= 'Z') {
 			result.WriteByte('_')
@@ -104,13 +104,13 @@ func toSnakeCase(s string) string {
 			result.WriteByte('_')
 		}
 	}
-	
+
 	s = result.String()
 	s = strings.Trim(s, "_")
-	
+
 	for strings.Contains(s, "__") {
 		s = strings.ReplaceAll(s, "__", "_")
 	}
-	
+
 	return s
 }
