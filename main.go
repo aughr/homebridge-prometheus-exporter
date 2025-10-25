@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -24,6 +25,7 @@ type Config struct {
 	Prefix   string
 	Debug    bool
 }
+
 
 func main() {
 	config := parseFlags()
@@ -89,10 +91,15 @@ func startMetricsServer(ctx context.Context, wg *sync.WaitGroup, config *Config)
 	session := NewSession(config.Username, config.Password, config.URI, config.Debug)
 	keys := loadKeys(config.KeyFile)
 
+	registry := prometheus.NewRegistry()
+	collector := NewHomebridgeCollector(session, config)
+	registry.MustRegister(collector)
+
 	appState := &AppState{
-		session: session,
-		config:  config,
-		keys:    keys,
+		session:  session,
+		config:   config,
+		keys:     keys,
+		registry: registry,
 	}
 
 	mux := http.NewServeMux()
@@ -124,20 +131,6 @@ func pingHandler(state *AppState) http.HandlerFunc {
 }
 
 func metricsHandler(state *AppState) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, err := state.session.GetToken()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		registry, err := buildRegistry(token, state.config.URI, state.config.Prefix, state.config.Debug)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
-		handler.ServeHTTP(w, r)
-	})
+	handler := promhttp.HandlerFor(state.registry, promhttp.HandlerOpts{})
+	return handler
 }

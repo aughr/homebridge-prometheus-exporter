@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -14,9 +15,10 @@ type AuthorizationKeys struct {
 }
 
 type AppState struct {
-	session *Session
-	config  *Config
-	keys    *AuthorizationKeys
+	session  *Session
+	config   *Config
+	keys     *AuthorizationKeys
+	registry *prometheus.Registry
 }
 
 func loadKeys(keyfilePath string) *AuthorizationKeys {

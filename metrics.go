@@ -9,13 +9,34 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func buildRegistry(token, uri, prefix string, debug bool) (*prometheus.Registry, error) {
-	registry := prometheus.NewRegistry()
+type HomebridgeCollector struct {
+	session *Session
+	config  *Config
+}
 
-	accessories, err := getAllAccessories(token, uri, debug)
+func NewHomebridgeCollector(session *Session, config *Config) *HomebridgeCollector {
+	return &HomebridgeCollector{
+		session: session,
+		config:  config,
+	}
+}
+
+func (c *HomebridgeCollector) Describe(ch chan<- *prometheus.Desc) {
+	// We cannot know what metrics we will have until we collect them
+	// so we send no descriptors - this is a valid approach for dynamic metrics
+}
+
+func (c *HomebridgeCollector) Collect(ch chan<- prometheus.Metric) {
+	token, err := c.session.GetToken()
+	if err != nil {
+		log.Printf("Error getting token: %v", err)
+		return
+	}
+
+	accessories, err := getAllAccessories(token, c.config.URI, c.config.Debug)
 	if err != nil {
 		log.Printf("Error fetching accessories: %v", err)
-		return nil, err
+		return
 	}
 
 	for _, accessory := range accessories {
@@ -26,40 +47,35 @@ func buildRegistry(token, uri, prefix string, debug bool) (*prometheus.Registry,
 
 			value, err := convertToFloat64(service.Value)
 			if err != nil {
-				if debug {
+				if c.config.Debug {
 					log.Printf("Skipping service %s: %v", service.ServiceName, err)
 				}
 				continue
 			}
 
 			metricName := fmt.Sprintf("%s_%s_%s",
-				prefix,
+				c.config.Prefix,
 				toSnakeCase(service.ServiceType),
 				toSnakeCase(service.Type),
 			)
 
-			gauge := prometheus.NewGaugeVec(
-				prometheus.GaugeOpts{
-					Name: metricName,
-					Help: service.Description,
-				},
+			desc := prometheus.NewDesc(
+				metricName,
+				service.Description,
 				[]string{"name"},
+				nil,
 			)
 
-			if err := registry.Register(gauge); err != nil {
-				if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
-					gauge = are.ExistingCollector.(*prometheus.GaugeVec)
-				} else {
-					log.Printf("Failed to register metric %s: %v", metricName, err)
-					continue
-				}
-			}
+			metric := prometheus.MustNewConstMetric(
+				desc,
+				prometheus.GaugeValue,
+				value,
+				toSnakeCase(service.ServiceName),
+			)
 
-			gauge.WithLabelValues(toSnakeCase(service.ServiceName)).Set(value)
+			ch <- metric
 		}
 	}
-
-	return registry, nil
 }
 
 func convertToFloat64(value interface{}) (float64, error) {
