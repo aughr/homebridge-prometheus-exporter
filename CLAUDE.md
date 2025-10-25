@@ -8,6 +8,8 @@ A Go-based Prometheus exporter that scrapes HomeKit accessory data from Homebrid
 
 ## Build and Run Commands
 
+### Local Development
+
 ```bash
 # Build for current platform
 go build
@@ -23,6 +25,33 @@ go run . -u <username> -p <password> -debug
 
 # Test the metrics endpoint
 curl http://localhost:9123/metrics
+```
+
+### Docker
+
+```bash
+# Build the Docker image
+docker build -t homebridge-exporter .
+
+# Run with environment variables
+docker run -d \
+  -e HOMEBRIDGE_USERNAME=admin \
+  -e HOMEBRIDGE_PASSWORD=yourpassword \
+  -e HOMEBRIDGE_URI=http://homebridge:8581 \
+  -p 9123:9123 \
+  homebridge-exporter
+
+# Run with debug logging
+docker run -d \
+  -e HOMEBRIDGE_USERNAME=admin \
+  -e HOMEBRIDGE_PASSWORD=yourpassword \
+  -e HOMEBRIDGE_URI=http://homebridge:8581 \
+  -e HOMEBRIDGE_DEBUG=true \
+  -p 9123:9123 \
+  homebridge-exporter
+
+# Build for specific platform (e.g., ARM64)
+docker build --platform linux/arm64 -t homebridge-exporter:arm64 .
 ```
 
 Note: There are currently no automated tests in this codebase.
@@ -86,7 +115,9 @@ The application has four main modules:
 
 ## Configuration
 
-All configuration is via command-line flags (no environment variables or config files except optional authorization keys):
+Configuration can be provided via command-line flags or environment variables. Command-line flags take precedence over environment variables.
+
+### Command-Line Flags
 
 - `-u/-username`: Homebridge username (required)
 - `-p/-password`: Homebridge password (required)
@@ -95,6 +126,20 @@ All configuration is via command-line flags (no environment variables or config 
 - `-prefix`: Metric name prefix (default: homebridge)
 - `-keyfile`: Authorization keys YAML file (default: authorization-keys.yml)
 - `-debug`: Enable verbose logging
+
+### Environment Variables
+
+| Environment Variable | Flag Equivalent | Default | Required |
+|---------------------|-----------------|---------|----------|
+| `HOMEBRIDGE_USERNAME` | `-u/-username` | - | Yes |
+| `HOMEBRIDGE_PASSWORD` | `-p/-password` | - | Yes |
+| `HOMEBRIDGE_URI` | `-uri` | http://localhost:8581 | No |
+| `HOMEBRIDGE_PORT` | `-port` | 9123 | No |
+| `HOMEBRIDGE_PREFIX` | `-prefix` | homebridge | No |
+| `HOMEBRIDGE_KEYFILE` | `-keyfile` | authorization-keys.yml | No |
+| `HOMEBRIDGE_DEBUG` | `-debug` | false | No |
+
+**Note**: For `HOMEBRIDGE_DEBUG`, accepted values are: `true`, `1`, `yes` (case-sensitive)
 
 ## Development Notes
 

@@ -66,15 +66,24 @@ func main() {
 func parseFlags() *Config {
 	config := &Config{}
 
-	flag.StringVar(&config.Username, "u", "", "Homebridge username")
-	flag.StringVar(&config.Username, "username", "", "Homebridge username")
-	flag.StringVar(&config.Password, "p", "", "Homebridge password")
-	flag.StringVar(&config.Password, "password", "", "Homebridge password")
-	flag.StringVar(&config.URI, "uri", "http://localhost:8581", "Homebridge UI uri")
-	flag.StringVar(&config.KeyFile, "keyfile", "authorization-keys.yml", "Authorization keys file")
-	flag.IntVar(&config.Port, "port", 9123, "Metrics webserver port")
-	flag.StringVar(&config.Prefix, "prefix", "homebridge", "Registry metrics prefix")
-	flag.BoolVar(&config.Debug, "debug", false, "Debug mode")
+	// Get defaults from environment variables
+	envUsername := os.Getenv("HOMEBRIDGE_USERNAME")
+	envPassword := os.Getenv("HOMEBRIDGE_PASSWORD")
+	envURI := getEnvOrDefault("HOMEBRIDGE_URI", "http://localhost:8581")
+	envKeyFile := getEnvOrDefault("HOMEBRIDGE_KEYFILE", "authorization-keys.yml")
+	envPort := getEnvIntOrDefault("HOMEBRIDGE_PORT", 9123)
+	envPrefix := getEnvOrDefault("HOMEBRIDGE_PREFIX", "homebridge")
+	envDebug := getEnvBoolOrDefault("HOMEBRIDGE_DEBUG", false)
+
+	flag.StringVar(&config.Username, "u", envUsername, "Homebridge username (env: HOMEBRIDGE_USERNAME)")
+	flag.StringVar(&config.Username, "username", envUsername, "Homebridge username (env: HOMEBRIDGE_USERNAME)")
+	flag.StringVar(&config.Password, "p", envPassword, "Homebridge password (env: HOMEBRIDGE_PASSWORD)")
+	flag.StringVar(&config.Password, "password", envPassword, "Homebridge password (env: HOMEBRIDGE_PASSWORD)")
+	flag.StringVar(&config.URI, "uri", envURI, "Homebridge UI uri (env: HOMEBRIDGE_URI)")
+	flag.StringVar(&config.KeyFile, "keyfile", envKeyFile, "Authorization keys file (env: HOMEBRIDGE_KEYFILE)")
+	flag.IntVar(&config.Port, "port", envPort, "Metrics webserver port (env: HOMEBRIDGE_PORT)")
+	flag.StringVar(&config.Prefix, "prefix", envPrefix, "Registry metrics prefix (env: HOMEBRIDGE_PREFIX)")
+	flag.BoolVar(&config.Debug, "debug", envDebug, "Debug mode (env: HOMEBRIDGE_DEBUG)")
 
 	flag.Parse()
 
@@ -85,6 +94,35 @@ func parseFlags() *Config {
 	}
 
 	return config
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvIntOrDefault(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := parseInt(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBoolOrDefault(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		return value == "true" || value == "1" || value == "yes"
+	}
+	return defaultValue
+}
+
+func parseInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
 }
 
 func startMetricsServer(ctx context.Context, wg *sync.WaitGroup, config *Config) *http.Server {
